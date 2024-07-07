@@ -1,11 +1,19 @@
 package com.mycompany.app;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.client.api.SubscriptionType;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 
 /**
  * Hello world!
@@ -69,7 +77,7 @@ class myConsumer implements Runnable
                 Message<byte []> msg = consumer.receive();
                 try
                 {
-                    //mp.process(msg);
+                    mp.process(msg);
                     System.out.println("received message: " + new String(msg.getData()));
                     consumer.acknowledge(msg);
                 }
@@ -101,7 +109,28 @@ class myConsumer implements Runnable
 
 class MessageProcessor
 {
-    void process(Message<byte []> msg)
+    String requestID;
+    Boolean stream;
+    String endPoint;
+    String data;
+    void process(Message<byte []> msg) throws Exception
+    {
+        // 转换成 JsonNode
+        ObjectMapper objectMapper = new ObjectMapper();
+        InputStream inputStream = new ByteArrayInputStream(msg.getData());
+        JsonNode rootNode = objectMapper.readTree(inputStream);
+
+        // 处理请求
+        requestID = rootNode.get("request_id").asText();
+        stream = rootNode.get("stream").asBoolean();
+        endPoint = rootNode.get("endPoint").asText();
+        data = rootNode.get("data").asText();
+
+        // 处理聊天请求
+        sendRuquest(data);
+    }
+
+    void sendRuquest(String data)
     {
 
     }
