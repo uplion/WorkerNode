@@ -8,7 +8,6 @@ import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClient;
-import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.client.api.SubscriptionType;
 
 // 工作节点
@@ -21,7 +20,7 @@ public class WorkerNode
     static String topicName;
     static String subscriptionName;
     static int maxProcessNum;
-    static BlockingQueue<Message <byte []>> queue = new LinkedBlockingDeque<>();
+    static BlockingQueue<Message <byte []>> queue;
 
     // 手动初始化 测试用
     static void initForTest()
@@ -31,6 +30,8 @@ public class WorkerNode
         pulsarURL = "pulsar://localhost:6650";
         topicName = "my-topic";
         subscriptionName = "my-subscription";
+        maxProcessNum = 10;
+        queue = new LinkedBlockingDeque<>();
     }
 
     // 从环境变量读取初始化
@@ -67,6 +68,8 @@ public class WorkerNode
             processors[i] = new Processor(nodeType, queue, consumer);
             processors[i].start("Thread " + String.valueOf(i));
         }
+
+        Thread.sleep(500);
 
         // 不断接收消息
         while(true)
@@ -135,8 +138,8 @@ class Processor implements Runnable
                     // 如果是 Api 节点
                     if(nodeType.equals("Api"))
                     {
-                        ApiMessageProcessor mp = new ApiMessageProcessor();
-                        mp.process(msg);
+                        //ApiMessageProcessor mp = new ApiMessageProcessor();
+                        //mp.process(msg);
                     }
                     else if(nodeType.equals("GPU"))
                     {
@@ -147,7 +150,6 @@ class Processor implements Runnable
                         throw new IOException("The nodeType is illegal!\n");
                     }
                     // 处理成功 返回 ACK
-                    System.out.println("received message: " + new String(msg.getData()));
                     consumer.acknowledge(msg);
                 }
                 // 处理失败 返回 NAK
