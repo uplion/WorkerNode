@@ -62,13 +62,13 @@ public class WorkerNode
 }
 
 // Api 类型工作节点
-class ApiWokerNode extends WorkerNode
+class ApiWorkerNode extends WorkerNode
 {
     // 参数
     String apiKey;
     String apiURL;
 
-    ApiWokerNode(String url)
+    ApiWorkerNode(String url)
     {
         apiURL = new String(url);
     }
