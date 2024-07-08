@@ -1,6 +1,8 @@
 package com.mycompany.app;
 
 import java.io.IOException;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingDeque;
 
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
@@ -19,6 +21,7 @@ public class WorkerNode
     static String topicName;
     static String subscriptionName;
     static int maxProcessNum;
+    static BlockingQueue<Message <byte []>> queue = new LinkedBlockingDeque<>();
 
     // 手动初始化 测试用
     static void initForTest()
@@ -52,11 +55,24 @@ public class WorkerNode
         producer.send("this is a message from java".getBytes());
 
         // 创建消费者接收消息
-        myConsumer[] test = new myConsumer[maxProcessNum];
+        Consumer<byte []> consumer = client.newConsumer().topic(topicName)
+            .subscriptionName(subscriptionName)
+            .subscriptionType(SubscriptionType.Shared)
+            .subscribe();
+
+        // 创建处理消息的处理器
+        Processor[] processors = new Processor[maxProcessNum];
         for(int i=0;i<maxProcessNum;i++)
         {
-            test[i] = new myConsumer(topicName, subscriptionName,nodeType);
-            test[i].start(client, "Thread " + String.valueOf(i));
+            processors[i] = new Processor(nodeType, queue, consumer);
+            processors[i].start("Thread " + String.valueOf(i));
+        }
+
+        // 不断接收消息
+        while(true)
+        {
+            Message<byte []> msg = consumer.receive();
+            queue.put(msg);
         }
     }
 }
@@ -86,21 +102,20 @@ class ApiWokerNode extends WorkerNode
 }
 
 // 消费者，接收并处理消息
-class myConsumer implements Runnable
+class Processor implements Runnable
 {
     // 参数
-    String topic;
-    String subscribeName;
-    Consumer<byte []> consumer;
     Thread th;
     String nodeType;
+    BlockingQueue<Message <byte []>> queue;
+    Consumer<byte []> consumer;
     
     // 构造函数
-    myConsumer(String topic,String subscribeName,String nodeType)
+    Processor(String nodeType,BlockingQueue<Message <byte []>> queue,Consumer<byte []> consumer)
     {
-        this.topic = new String(topic);
-        this.subscribeName = new String(subscribeName);
         this.nodeType = new String(nodeType);
+        this.queue = queue;
+        this.consumer = consumer;
     }
 
     // 线程的 run 方法
@@ -112,7 +127,7 @@ class myConsumer implements Runnable
             while(true)
             {
                 // 尝试获取消息
-                Message<byte []> msg = consumer.receive();
+                Message<byte []> msg = queue.take();
                 try
                 {
                     // 处理消息
@@ -142,11 +157,6 @@ class myConsumer implements Runnable
                 }
             }
         }
-        // 客户端失败
-        catch(PulsarClientException e)
-        {
-            e.printStackTrace();
-        }
         // 其他异常
         catch(Exception e)
         {
@@ -155,14 +165,10 @@ class myConsumer implements Runnable
     }
 
     // 启动线程
-    void start(PulsarClient client,String name) throws Exception
+    void start(String name) throws Exception
     {
         if(th == null)
         {
-            this.consumer = client.newConsumer().topic(this.topic)
-            .subscriptionName(this.subscribeName)
-            .subscriptionType(SubscriptionType.Shared)
-            .subscribe();
             th = new Thread(this,name);
             th.start();
         }
