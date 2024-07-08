@@ -6,7 +6,7 @@ import java.net.http.HttpResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.JsonNode;
-
+// hello
 public class ApiClient {
     private String API_URL = "https://api.openai-hk.com/v1/chat/completions";
     private String API_KEY = "hk-j9e9al1000037138f0cd6a31058a83dbb7a63f56fd48788c";
