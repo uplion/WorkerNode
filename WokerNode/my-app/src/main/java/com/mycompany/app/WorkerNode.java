@@ -10,7 +10,7 @@ import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.client.api.SubscriptionType;
 
 // 工作节点
-public class WokerNode
+public class WorkerNode
 {
     // 参数
     static String nodeType;
@@ -39,7 +39,7 @@ public class WokerNode
     // 运行
     public static void main( String[] args ) throws Exception
     {
-        WokerNode.initForTest();
+        WorkerNode.initForTest();
         // 创建 pulsar 客户端
         PulsarClient client = PulsarClient.builder()
         .serviceUrl(pulsarURL)
@@ -62,7 +62,7 @@ public class WokerNode
 }
 
 // Api 类型工作节点
-class ApiWokerNode extends WokerNode
+class ApiWokerNode extends WorkerNode
 {
     // 参数
     String apiKey;
@@ -125,7 +125,7 @@ class myConsumer implements Runnable
                     }
                     else if(nodeType.equals("GPU"))
                     {
-
+                        
                     }
                     else
                     {
