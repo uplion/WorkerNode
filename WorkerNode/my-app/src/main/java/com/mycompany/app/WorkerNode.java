@@ -3,6 +3,8 @@ package com.mycompany.app;
 import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
@@ -27,6 +29,7 @@ public class WorkerNode
     static String servicePulsarURL;
     static String servicePulsarToken;
     static BlockingQueue<Message <byte []>> queue;
+    static Map<String,WebSocketClient> map;
 
     // 手动初始化 测试用
     static void initForTest()
@@ -34,12 +37,13 @@ public class WorkerNode
         nodeType = "Api";
         adminAddress = "";
         pulsarURL = "pulsar://localhost:6650";
-        topicName = "my-topic";
+        topicName = "model-gpt-3.5-turbo";
         subscriptionName = "my-subscription";
         maxProcessNum = 10;
         apiURL = "https://api.openai-hk.com/v1/chat/completions";
         apiKey = "hk-j9e9al1000037138f0cd6a31058a83dbb7a63f56fd48788c";
         queue = new LinkedBlockingDeque<>();
+        map = new HashMap<>();
     }
 
     // 从环境变量读取初始化
@@ -61,7 +65,7 @@ public class WorkerNode
         Producer<byte[]> producer = client.newProducer()
         .topic(topicName)
         .create();
-        producer.send("this is a message from java".getBytes());
+        //producer.send("this is a message from java".getBytes());
 
         // 创建消费者接收消息
         Consumer<byte []> consumer = client.newConsumer().topic(topicName)
@@ -73,7 +77,7 @@ public class WorkerNode
         Processor[] processors = new Processor[maxProcessNum];
         for(int i=0;i<maxProcessNum;i++)
         {
-            processors[i] = new Processor(nodeType, queue, consumer,apiURL,apiKey,producer);
+            processors[i] = new Processor(nodeType, queue, consumer,apiURL,apiKey,producer,map);
             processors[i].start("Thread " + String.valueOf(i));
         }
 
@@ -83,6 +87,7 @@ public class WorkerNode
         while(true)
         {
             Message<byte []> msg = consumer.receive();
+            System.out.println("received message: " + new String(msg.getData()));
             queue.put(msg);
         }
     }
@@ -98,10 +103,11 @@ class Processor implements Runnable
     String apiKey;
     Producer<byte []> producer;
     BlockingQueue<Message <byte []>> queue;
+    Map<String,WebSocketClient> map;
     Consumer<byte []> consumer;
     
     // 构造函数
-    Processor(String nodeType,BlockingQueue<Message <byte []>> queue,Consumer<byte []> consumer,String apiURL,String apiKey,Producer<byte []> producer)
+    Processor(String nodeType,BlockingQueue<Message <byte []>> queue,Consumer<byte []> consumer,String apiURL,String apiKey,Producer<byte []> producer,Map<String,WebSocketClient> map)
     {
         this.nodeType = new String(nodeType);
         this.queue = queue;
@@ -109,6 +115,7 @@ class Processor implements Runnable
         this.apiURL = new String(apiURL);
         this.apiKey = new String(apiKey);
         this.producer = producer;
+        this.map = map;
     }
 
     // 线程的 run 方法
@@ -128,7 +135,8 @@ class Processor implements Runnable
                     // 如果是 Api 节点
                     if(nodeType.equals("Api"))
                     {
-                        ApiMessageProcessor mp = new ApiMessageProcessor(apiURL,apiKey,producer);
+                        System.out.println("take message: " + new String(msg.getData()));
+                        ApiMessageProcessor mp = new ApiMessageProcessor(apiURL,apiKey,producer,map);
                         mp.process(msg);
                     }
                     else if(nodeType.equals("GPU"))
