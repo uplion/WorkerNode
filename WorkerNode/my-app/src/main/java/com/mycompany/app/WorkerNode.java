@@ -15,29 +15,37 @@ public class WorkerNode
 {
     // 参数
     static String nodeType;
-    static String adminAdress;
+    static String apiURL;
+    static String adminAddress;
     static String pulsarURL;
+    static String pulsarToken;
     static String topicName;
     static String subscriptionName;
     static int maxProcessNum;
+    static String apiKey;
+    static Boolean debug;
+    static String servicePulsarURL;
+    static String servicePulsarToken;
     static BlockingQueue<Message <byte []>> queue;
 
     // 手动初始化 测试用
     static void initForTest()
     {
         nodeType = "Api";
-        adminAdress = "";
+        adminAddress = "";
         pulsarURL = "pulsar://localhost:6650";
         topicName = "my-topic";
         subscriptionName = "my-subscription";
         maxProcessNum = 10;
+        apiURL = "https://api.openai-hk.com/v1/chat/completions";
+        apiKey = "hk-j9e9al1000037138f0cd6a31058a83dbb7a63f56fd48788c";
         queue = new LinkedBlockingDeque<>();
     }
 
     // 从环境变量读取初始化
     void init()
     {
-
+        
     }
 
     // 运行
@@ -49,7 +57,7 @@ public class WorkerNode
         .serviceUrl(pulsarURL)
         .build();
         
-        // 创建消息
+        // 创建生产者生产消息
         Producer<byte[]> producer = client.newProducer()
         .topic(topicName)
         .create();
@@ -65,7 +73,7 @@ public class WorkerNode
         Processor[] processors = new Processor[maxProcessNum];
         for(int i=0;i<maxProcessNum;i++)
         {
-            processors[i] = new Processor(nodeType, queue, consumer);
+            processors[i] = new Processor(nodeType, queue, consumer,apiURL,apiKey,producer);
             processors[i].start("Thread " + String.valueOf(i));
         }
 
@@ -80,45 +88,27 @@ public class WorkerNode
     }
 }
 
-// Api 类型工作节点
-class ApiWorkerNode extends WorkerNode
-{
-    // 参数
-    String apiKey;
-    String apiURL;
-
-    ApiWorkerNode(String url)
-    {
-        apiURL = new String(url);
-    }
-
-    void init()
-    {
-        nodeType = "api";
-        adminAdress = "";
-        pulsarURL = "pulsar://localhost:6650";
-        apiKey = "hk-j9e9al1000037138f0cd6a31058a83dbb7a63f56fd48788c";
-        apiURL = "https://api.openai-hk.com/v1/chat/completions";
-        maxProcessNum = 10;
-    } 
-
-}
-
 // 消费者，接收并处理消息
 class Processor implements Runnable
 {
     // 参数
     Thread th;
     String nodeType;
+    String apiURL;
+    String apiKey;
+    Producer<byte []> producer;
     BlockingQueue<Message <byte []>> queue;
     Consumer<byte []> consumer;
     
     // 构造函数
-    Processor(String nodeType,BlockingQueue<Message <byte []>> queue,Consumer<byte []> consumer)
+    Processor(String nodeType,BlockingQueue<Message <byte []>> queue,Consumer<byte []> consumer,String apiURL,String apiKey,Producer<byte []> producer)
     {
         this.nodeType = new String(nodeType);
         this.queue = queue;
         this.consumer = consumer;
+        this.apiURL = new String(apiURL);
+        this.apiKey = new String(apiKey);
+        this.producer = producer;
     }
 
     // 线程的 run 方法
@@ -138,8 +128,8 @@ class Processor implements Runnable
                     // 如果是 Api 节点
                     if(nodeType.equals("Api"))
                     {
-                        //ApiMessageProcessor mp = new ApiMessageProcessor();
-                        //mp.process(msg);
+                        ApiMessageProcessor mp = new ApiMessageProcessor(apiURL,apiKey,producer);
+                        mp.process(msg);
                     }
                     else if(nodeType.equals("GPU"))
                     {

@@ -1,15 +1,16 @@
 package com.mycompany.app;
+
+// 这个文件是测试用的 没啥价值 qaq
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.JsonNode;
+
 // hello
 public class ApiClient {
-    private String API_URL = "https://api.openai-hk.com/v1/chat/completions";
-    private String API_KEY = "hk-j9e9al1000037138f0cd6a31058a83dbb7a63f56fd48788c";
 
     public static void main(String[] args) throws Exception {
         HttpClient client = HttpClient.newHttpClient();
@@ -39,16 +40,6 @@ public class ApiClient {
 
         // 打印响应
         System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonResponse));
-    }
-
-    ApiClient(String url)
-    {
-        this.API_URL = new String(url);
-    }
-
-    void sendRequest(JsonNode dataNode)
-    {
-        this.API_KEY = new String();
     }
 }
 
