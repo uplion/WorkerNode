@@ -4,40 +4,45 @@ import os
 import pulsar
 import threading
 from ApiMessageProcessor import ApiMessageProcessor
+import Event
 
-nodeType : str = "Api";
-adminAddress : str = "";
+nodeType : str = "api";
 pulsarURL : str = "pulsar://localhost:6650";
 topicName : str = "model-gpt-3.5-turbo";
-subscriptionName : str = "my-subscription";
 maxProcessNum : int = 10;
 apiURL : str = "https://api.openai-hk.com/v1/chat/completions";
 apiKey : str = "hk-j9e9al1000037138f0cd6a31058a83dbb7a63f56fd48788c";
 queue : Queue = Queue();
 map : Dict = dict();
+model : str = 'gpt-3.5-turbo'
+serviceTopicName : str = '' 
+debug : bool = False
+pulsarToken : str = ''
+podNamespace : str = ''
+podName : str = ''
 
 def init():
-    global nodeType,adminAddress,pulsarURL,topicName,subscriptionName
-    global maxProcessNum,apiURL,apiKey,queue,map
+    global nodeType,pulsarURL,serviceTopicName,pulsarToken,topicName
+    global maxProcessNum,apiURL,apiKey,queue,map,model,debug,podName,podNamespace
     nodeType = os.getenv('NODETYPE','Api');
-    adminAddress = os.getenv('ADMIN_ADRESS','');
     pulsarURL = os.getenv('PULSAR_URL',"pulsar://localhost:6650");
-    topicName = os.getenv("TOPIC_NAME","model-gpt-3.5-turbo");
-    subscriptionName = os.getenv('SUBSCRIPTION_NAME',"my-subscription");
     maxProcessNum = int(os.getenv('MAX_PROCESS_NUM','10'));
     apiURL = os.getenv('API_URL',"https://api.openai-hk.com/v1/chat/completions");
     apiKey = os.getenv('API_KEY',"hk-j9e9al1000037138f0cd6a31058a83dbb7a63f56fd48788c");
+    model = os.getenv('MODEL_NAME','gpt-3.5-turbo')
+    serviceTopicName = os.getenv('RES_TOPIC_NAME','')
+    debug = bool(os.getenv('DEBUG','false'))
+    pulsarToken = os.getenv('PULSAR_TOKEN','')
+    podName = os.getenv('POD_NAME','')
+    podNamespace = os.getenv('POD_NAMESPACE','')
+    topicName = 'model-' + model
     queue = Queue();
     map = dict();
 
 def run():
     client = pulsar.Client(pulsarURL)
 
-    consumer = client.subscribe(topicName,subscriptionName)
-
-    producer = client.create_producer(topicName)
-
-    # producer.send('this is a message from python!'.encode('utf-8')) # debug
+    consumer = client.subscribe(topicName,topicName + '-subscription')
 
     processors = list()
 
@@ -68,7 +73,6 @@ class Processor(threading.Thread):
             try:
                 msg = queue.get(True)
                 print('{} take message: {}'.format(self.name,msg.data())) #debug
-                # TODO: 处理消息
                 amp = ApiMessageProcessor(msg,apiURL,apiKey)
                 amp.process()
                 self.consumer.acknowledge(msg)
@@ -79,4 +83,5 @@ class Processor(threading.Thread):
                 self.consumer.negative_acknowledge(msg) # type: ignore
 
 if __name__ == '__main__':
+    init()
     run()
