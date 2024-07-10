@@ -16,5 +16,3 @@ while True :
         consumer.acknowledge(msg)
     except Exception:
         consumer.negative_acknowledge(msg)
-
-client.close()
