@@ -5,6 +5,7 @@ import pulsar
 import threading
 from ApiMessageProcessor import ApiMessageProcessor
 import Event
+from kubernetes import client,config
 
 nodeType : str = "api";
 pulsarURL : str = "pulsar://localhost:6650";
@@ -33,8 +34,8 @@ def init():
     serviceTopicName = os.getenv('RES_TOPIC_NAME','')
     debug = bool(os.getenv('DEBUG','false'))
     pulsarToken = os.getenv('PULSAR_TOKEN','')
-    podName = os.getenv('POD_NAME','')
-    podNamespace = os.getenv('POD_NAMESPACE','')
+    podName = os.getenv('POD_NAME','pod-' + model)
+    podNamespace = os.getenv('POD_NAMESPACE','default')
     topicName = 'model-' + model
     queue = Queue();
     map = dict();
@@ -82,6 +83,16 @@ class Processor(threading.Thread):
                 print("erroe message: {e}")
                 self.consumer.negative_acknowledge(msg) # type: ignore
 
+def kubenetesInit():
+    try:
+        config.load_incluster_config()
+    except:
+        config.load_kube_config()
+    global apiInstance
+    apiInstance = client.CoreV1Api()
+    
+
 if __name__ == '__main__':
+    kubenetesInit()
     init()
     run()

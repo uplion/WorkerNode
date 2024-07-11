@@ -1,6 +1,7 @@
 import json
 import requests
 from sseclient import SSEClient
+import websocket
 
 class ApiMessageProcessor:
     def __init__(self,msg,apiURL,apiKey):
@@ -65,32 +66,34 @@ class ApiMessageProcessor:
                 yield chunk
         client = SSEClient(event_stream())
 
+        ws = websocket.create_connection(endpoint.replace('http://','ws://'))
+
         for event in client.events():
             if event.data == '[DONE]':
-                self.sendStreamResponse(None,True,request_id,endpoint)
+                self.sendStreamResponse(None,True,request_id,ws)
+                ws.close()
                 break
             if event.data:
                 try:
                     event_data = json.loads(event.data)
                     print("received event: {}".format(event_data))
-                    self.sendStreamResponse(event_data,False,request_id,endpoint)
+                    self.sendStreamResponse(event_data,False,request_id,ws)
                 except json.JSONDecodeError:
                     print("can handle event data: {}".format(event.data))
         
 
-    def sendStreamResponse(self,response,end,request_id,endpoint):
-        headers = {
-            'Content-Type' : 'applicatiion/json'
-        }
+    def sendStreamResponse(self,response,end,request_id,ws):
         if end == True:
             newResponse = {
                 'request_id': request_id,
-                'end': 'true'
+                'end': True
         }
         else:
             newResponse = {
                 'request_id': request_id,
-                'end': 'false',
+                'end': False,
                 'data': response
             }
-        requests.post(endpoint,data=json.dumps(newResponse),headers=headers)
+        responseString = json.dumps(newResponse)
+        print('Send response: ' + responseString)
+        ws.send(responseString)
