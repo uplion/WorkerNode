@@ -34,8 +34,8 @@ def init():
     serviceTopicName = os.getenv('RES_TOPIC_NAME','res-topic')
     debug = bool(os.getenv('DEBUG','false'))
     pulsarToken = os.getenv('PULSAR_TOKEN','')
-    AIModelName = os.getenv('AIMODEL_NAME','ai-model-sample')
-    AIModelNamespace = os.getenv('AIMODEL_NAMESPACE','default')
+    AIModelName = os.getenv('AIMODEL_NAME','none')
+    AIModelNamespace = os.getenv('AIMODEL_NAMESPACE','none')
     topicName = 'model-' + model
     queue = Queue();
     map = dict();
@@ -43,7 +43,11 @@ def init():
 def run():
     client = pulsar.Client(pulsarURL)
 
-    consumer = client.subscribe(topicName,topicName + '-subscription')
+    consumer = client.subscribe(
+        topic=topicName,
+        subscription_name=topicName + '-subscription',
+        consumer_type=pulsar.ConsumerType.Shared
+        )
 
     processors = list()
 

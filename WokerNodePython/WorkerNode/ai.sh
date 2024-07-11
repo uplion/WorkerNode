@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 stream=false
 if [ "$1" == "stream" ]; then
   stream=true
