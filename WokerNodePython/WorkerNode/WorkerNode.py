@@ -19,23 +19,23 @@ model : str = 'gpt-3.5-turbo'
 serviceTopicName : str = '' 
 debug : bool = False
 pulsarToken : str = ''
-podNamespace : str = ''
-podName : str = ''
+AIModelNamespace : str = ''
+AIModelName : str = ''
 
 def init():
     global nodeType,pulsarURL,serviceTopicName,pulsarToken,topicName
-    global maxProcessNum,apiURL,apiKey,queue,map,model,debug,podName,podNamespace
-    nodeType = os.getenv('NODETYPE','Api');
+    global maxProcessNum,apiURL,apiKey,queue,map,model,debug,AIModelName,AIModelNamespace
+    nodeType = os.getenv('NODE_TYPE','Api');
     pulsarURL = os.getenv('PULSAR_URL',"pulsar://localhost:6650");
-    maxProcessNum = int(os.getenv('MAX_PROCESS_NUM','10'));
+    maxProcessNum = int(os.getenv('MAX_PROCESS_NUM','128'));
     apiURL = os.getenv('API_URL',"https://api.openai-hk.com/v1/chat/completions");
     apiKey = os.getenv('API_KEY',"hk-j9e9al1000037138f0cd6a31058a83dbb7a63f56fd48788c");
     model = os.getenv('MODEL_NAME','gpt-3.5-turbo')
-    serviceTopicName = os.getenv('RES_TOPIC_NAME','')
+    serviceTopicName = os.getenv('RES_TOPIC_NAME','res-topic')
     debug = bool(os.getenv('DEBUG','false'))
     pulsarToken = os.getenv('PULSAR_TOKEN','')
-    podName = os.getenv('POD_NAME','pod-' + model)
-    podNamespace = os.getenv('POD_NAMESPACE','default')
+    AIModelName = os.getenv('AIMODEL_NAME','ai-model-sample')
+    AIModelNamespace = os.getenv('AIMODEL_NAMESPACE','default')
     topicName = 'model-' + model
     queue = Queue();
     map = dict();

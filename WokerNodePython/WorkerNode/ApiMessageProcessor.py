@@ -20,7 +20,6 @@ class ApiMessageProcessor:
                 print('received response: {}'.format(response))
                 self.sendHttpResponse(response,requestID,endPoint)
             else:
-                # TODO: 流式响应
                 self.sendStreamRequest(data,requestID,endPoint)
         except json.JSONDecodeError as e:
             print('Error decoding JSON: {}'.format(e))
