@@ -54,12 +54,8 @@ class ApiMessageProcessor:
         }
 
         response = requests.post(self.apiURL,data=json.dumps(data),headers=headers)
-
-        if response.status_code == 200:
-            jsonResponse = response.json()
-            return jsonResponse
-        else: 
-            raise Exception("Http request failed,status code: {}".format(response.status_code))
+        response.raise_for_status()
+        return response.json()
     
     def sendHttpResponse(self,response,request_id,endpoint):
         headers = {

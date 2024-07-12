@@ -7,17 +7,18 @@ import threading
 import json
 from ApiMessageProcessor import ApiMessageProcessor
 import Event
+import requests
 from kubernetes import client,config
 
-nodeType : str = "api";
-pulsarURL : str = "pulsar://localhost:6650";
-topicName : str = "model-gpt-3.5-turbo";
-maxProcessNum : int = 10;
-apiURL : str = "https://api.openai-hk.com/v1/chat/completions";
-apiKey : str = "hk-j9e9al1000037138f0cd6a31058a83dbb7a63f56fd48788c";
+nodeType : str = '';
+pulsarURL : str = '';
+topicName : str = '';
+maxProcessNum : int = 0;
+apiURL : str = '';
+apiKey : str = '';
 queue : Queue = Queue();
 map : Dict = dict();
-model : str = 'gpt-3.5-turbo'
+model : str = ''
 serviceTopicName : str = '' 
 debug : bool = False
 pulsarToken : str = ''
@@ -33,8 +34,8 @@ def init():
     nodeType = os.getenv('NODE_TYPE','api');
     pulsarURL = os.getenv('PULSAR_URL',"pulsar://localhost:6650");
     maxProcessNum = int(os.getenv('MAX_PROCESS_NUM','128'));
-    apiURL = os.getenv('API_URL',"https://api.openai-hk.com/v1/chat/completions");
-    apiKey = os.getenv('API_KEY',"hk-j9e9al1000037138f0cd6a31058a83dbb7a63f56fd48788c");
+    apiURL = os.getenv('API_URL',"https://api.openai.com/v1/chat/completions");
+    apiKey = os.getenv('API_KEY',"");
     model = os.getenv('MODEL_NAME','gpt-3.5-turbo')
     serviceTopicName = os.getenv('RES_TOPIC_NAME','res-topic')
     debug = bool(os.getenv('DEBUG','false'))
@@ -95,11 +96,11 @@ class Processor(threading.Thread):
         self.consumer = consumer
         self.producer = pulsarClient.create_producer(serviceTopicName)
     def run(self):
+        global startTime
         while True:
             msg = None
             if stopEvent.is_set() and time.time() > startTime:
                 stopEvent.clear()
-                global startTime
                 startTime = 0
             elif stopEvent.is_set():
                 time.sleep(5)
@@ -117,16 +118,27 @@ class Processor(threading.Thread):
                 Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'GeneralError','Error decoding JSON')
                 if msg:
                     self.consumer.negative_acknowledge(msg)
-            except Exception as e:
-                if e.args[0] == 'Http request failed,status code: 428':
-                    Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'AuthenticationError','The key is wrong!')
-                elif e.args[0] == 'Http request failed,status code: 429':
-                    if not stopEvent.is_set():
-                        stopEvent.set()
-                        global startTime
-                        startTime = time.time() + 60
+            except requests.exceptions.HTTPError as e:
+                # 处理HTTP错误
+                if e.response.status_code == 401:
+                    error_detail = e.response.json()
+                    Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'AuthenticationError',json.dumps(error_detail))
+                elif e.response.status_code == 429:
+                    error_detail = e.response.json()
+                    if 'Rate limit reached for requests' in error_detail['error']['message']:
+                        if not stopEvent.isSet():
+                            stopEvent.set()
+                            startTime = time.time() + 60
+                    else:
+                        Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'APIQuotaExceededError',json.dumps(error_detail))
                 else:
-                    Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'GeneralError',e.__str__())
+                    error_detail = e.response.json()
+                    Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'GeneralError',json.dumps(error_detail))
+                if msg:
+                    self.consumer.negative_acknowledge(msg)
+
+            except Exception as e:
+                Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'GeneralError',e.__str__())
                 if msg:
                     self.consumer.negative_acknowledge(msg)
 
