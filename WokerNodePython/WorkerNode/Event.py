@@ -3,7 +3,12 @@ import os
 import time
 
 def createEvent(apiInstance,AIModelNamespace,AIModelName,reason,message):
-    event = client.CoreV1Event(
+    if(AIModelName == 'none'):
+        print(
+            'An error occured!\nreason: {}\nmessage: {}'.format(reason,message)
+        )
+    else:
+        event = client.CoreV1Event(
         metadata=client.V1ObjectMeta(
             name=f'{AIModelName}.workerNode-error',
             namespace=AIModelNamespace,
@@ -22,5 +27,5 @@ def createEvent(apiInstance,AIModelNamespace,AIModelName,reason,message):
         first_timestamp=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         last_timestamp=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     )
-
-    apiInstance.create_namespace_event(AIModelNamespace,event)
+        apiInstance.create_namespace_event(AIModelNamespace,event)
+    
