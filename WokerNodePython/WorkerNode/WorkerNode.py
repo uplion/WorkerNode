@@ -1,9 +1,9 @@
 from queue import Queue,Empty
 from typing import Dict
+import time
 import os
 import pulsar
 import threading
-import requests
 import json
 from ApiMessageProcessor import ApiMessageProcessor
 import Event
@@ -24,6 +24,8 @@ pulsarToken : str = ''
 AIModelNamespace : str = ''
 AIModelName : str = ''
 apiInstance = None
+stopEvent = threading.Event()
+startTime = 0
 
 def init():
     global nodeType,pulsarURL,serviceTopicName,pulsarToken,topicName
@@ -95,6 +97,13 @@ class Processor(threading.Thread):
     def run(self):
         while True:
             msg = None
+            if stopEvent.is_set() and time.time() > startTime:
+                stopEvent.clear()
+                global startTime
+                startTime = 0
+            elif stopEvent.is_set():
+                time.sleep(5)
+                continue
             try:
                 msg = queue.get(True)
                 print('{} take message: {}'.format(self.name,msg.data())) #debug
@@ -111,6 +120,11 @@ class Processor(threading.Thread):
             except Exception as e:
                 if e.args[0] == 'Http request failed,status code: 428':
                     Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'AuthenticationError','The key is wrong!')
+                elif e.args[0] == 'Http request failed,status code: 429':
+                    if not stopEvent.is_set():
+                        stopEvent.set()
+                        global startTime
+                        startTime = time.time() + 60
                 else:
                     Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'GeneralError',e.__str__())
                 if msg:
