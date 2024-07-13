@@ -32,12 +32,12 @@ sockets = dict()
 def init():
     global nodeType,pulsarURL,serviceTopicName,pulsarToken,topicName
     global maxProcessNum,apiURL,apiKey,queue,map,model,debug,AIModelName,AIModelNamespace
-    nodeType = os.getenv('NODE_TYPE','api');
+    nodeType = os.getenv('NODE_TYPE','local');
     pulsarURL = os.getenv('PULSAR_URL',"pulsar://localhost:6650");
     maxProcessNum = int(os.getenv('MAX_PROCESS_NUM','128'));
-    apiURL = os.getenv('API_URL',"https://api.openai.com/v1/chat/completions");
-    apiKey = os.getenv('API_KEY',"");
-    model = os.getenv('MODEL_NAME','gpt-3.5-turbo')
+    apiURL = os.getenv('API_URL',"http://localhost:8080/v1/chat/completions");
+    apiKey = os.getenv('API_KEY',"sk-no-key-required");
+    model = os.getenv('MODEL_NAME','LLaMA_CPP')
     serviceTopicName = os.getenv('RES_TOPIC_NAME','res-topic')
     debug = bool(os.getenv('DEBUG','false'))
     pulsarToken = os.getenv('PULSAR_TOKEN','')
@@ -109,7 +109,10 @@ class Processor(threading.Thread):
             try:
                 msg = queue.get(True)
                 print('{} take message: {}'.format(self.name,msg.data())) #debug
-                amp = ApiMessageProcessor(msg,apiURL,apiKey,model)
+                if nodeType == 'api':
+                    amp = ApiMessageProcessor(msg,apiURL,apiKey,model)
+                else:
+                    amp = ApiMessageProcessor(msg,apiURL,apiKey,'gpt-3.5-turbo')
                 result = amp.process()
                 self.sendResult(result)
                 self.consumer.acknowledge(msg)

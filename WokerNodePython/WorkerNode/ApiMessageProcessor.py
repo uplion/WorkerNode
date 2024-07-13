@@ -64,7 +64,7 @@ class ApiMessageProcessor:
             'Authorization': 'Bearer {}'.format(self.apiKey)
         }
 
-        response = requests.post(self.apiURL,data=json.dumps(data),headers=headers)
+        response = requests.post(self.apiURL,data=json.dumps(data),headers=headers,verify=False)
         response.raise_for_status()
         return response.json()
     
@@ -76,7 +76,7 @@ class ApiMessageProcessor:
             'request_id' : request_id,
             'data' : response
         }
-        requests.post(endpoint,data=json.dumps(newResponse),headers=headers)
+        requests.post(endpoint,data=json.dumps(newResponse),headers=headers,verify=False)
 
     def sendStreamRequest(self,data,request_id,endpoint):
         headers = {
@@ -84,14 +84,6 @@ class ApiMessageProcessor:
             'Authorization': 'Bearer {}'.format(self.apiKey)
         }
 
-        response = requests.post(self.apiURL,data=json.dumps(data),headers=headers)
-
-        if response.status_code >= 200:
-            try:
-                error_detail = response.json()
-                raise requests.HTTPError(json.dumps(error_detail),response)
-            except Exception as e:
-                raise e
         def event_stream():
             for chunk in response.iter_content(chunk_size=None):
                 yield chunk
@@ -99,6 +91,14 @@ class ApiMessageProcessor:
 
         ws = websocket.create_connection(endpoint.replace('http://','ws://'))
         self.destination = ws
+
+        response = requests.post(self.apiURL,data=json.dumps(data),headers=headers,verify=False)
+
+        if response.status_code >= 200:
+            e = requests.exceptions.HTTPError()
+            e.response = response
+            raise e
+        
 
         prompt_tokens = 0
         completion_tokens = 0
@@ -155,7 +155,7 @@ class ApiMessageProcessor:
                 'request_id' : request_id,
                 'data' : error
             }
-            requests.post(destination,data=json.dumps(newResponse),headers=headers)
+            requests.post(destination,data=json.dumps(newResponse),headers=headers,verify=False)
             print('send error: ' + json.dumps(newResponse))
         elif isinstance(destination,websocket.WebSocket):
             newResponse = {
