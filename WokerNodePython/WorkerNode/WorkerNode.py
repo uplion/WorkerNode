@@ -32,12 +32,12 @@ sockets = dict()
 def init():
     global nodeType,pulsarURL,serviceTopicName,pulsarToken,topicName
     global maxProcessNum,apiURL,apiKey,queue,map,model,debug,AIModelName,AIModelNamespace
-    nodeType = os.getenv('NODE_TYPE','local');
+    nodeType = os.getenv('NODE_TYPE','api');
     pulsarURL = os.getenv('PULSAR_URL',"pulsar://localhost:6650");
     maxProcessNum = int(os.getenv('MAX_PROCESS_NUM','128'));
     apiURL = os.getenv('API_URL',"http://localhost:8080/v1/chat/completions");
     apiKey = os.getenv('API_KEY',"sk-no-key-required");
-    model = os.getenv('MODEL_NAME','LLaMA_CPP')
+    model = os.getenv('MODEL_NAME','gpt-3.5-turbo')
     serviceTopicName = os.getenv('RES_TOPIC_NAME','res-topic')
     debug = bool(os.getenv('DEBUG','false'))
     pulsarToken = os.getenv('PULSAR_TOKEN','')
@@ -159,7 +159,10 @@ def kubenetesInit():
     try:
         config.load_incluster_config()
     except:
-        config.load_kube_config()
+        try:
+            config.load_kube_config()
+        except:
+            return
     global apiInstance
     apiInstance = client.CoreV1Api()
     

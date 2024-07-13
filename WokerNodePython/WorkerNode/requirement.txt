@@ -1,0 +1,6 @@
+pulsar-client
+requests
+kubernetes
+sseclient
+tiktoken
+websocket-client
