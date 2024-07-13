@@ -11,6 +11,7 @@ class ApiMessageProcessor:
         self.apiURL = apiURL
         self.apiKey = apiKey
         self.encoding = tiktoken.encoding_for_model(model)
+        self.destination = None
     def process(self):
         try:
             jsonMsg = json.loads(self.msg.data().decode('utf-8'))
@@ -18,7 +19,11 @@ class ApiMessageProcessor:
             endPoint = jsonMsg['endpoint']
             stream = jsonMsg['stream']
             data = jsonMsg['data']
+        except Exception as e:
+            raise e
+        try:
             if(stream == False):
+                self.destination = endPoint
                 response = self.sendHttpRequest(data)
                 print('received response: {}'.format(response))
                 self.sendHttpResponse(response,requestID,endPoint)
@@ -44,6 +49,12 @@ class ApiMessageProcessor:
                     "usage": usage
                 }
                 return result
+        
+        except requests.exceptions.HTTPError as e:
+            error_detail = e.response.json()
+            # TODO: 完成返回错误    
+            self.sendError(self.destination,requestID,error_detail)
+            raise e
         except Exception as e:
             raise e
 
@@ -75,14 +86,19 @@ class ApiMessageProcessor:
 
         response = requests.post(self.apiURL,data=json.dumps(data),headers=headers)
 
-        if response.status_code != 200:
-            raise Exception("request failed, status code = {}".format(response.status_code))
+        if response.status_code >= 200:
+            try:
+                error_detail = response.json()
+                raise requests.HTTPError(json.dumps(error_detail),response)
+            except Exception as e:
+                raise e
         def event_stream():
             for chunk in response.iter_content(chunk_size=None):
                 yield chunk
         client = SSEClient(event_stream())
 
         ws = websocket.create_connection(endpoint.replace('http://','ws://'))
+        self.destination = ws
 
         prompt_tokens = 0
         completion_tokens = 0
@@ -129,3 +145,26 @@ class ApiMessageProcessor:
         responseString = json.dumps(newResponse)
         print('Send response: ' + responseString)
         ws.send(responseString)
+    
+    def sendError(self,destination,request_id,error):
+        if isinstance(destination,str):
+            headers = {
+                'Content-Type' : 'application/json'
+            }
+            newResponse = {
+                'request_id' : request_id,
+                'data' : error
+            }
+            requests.post(destination,data=json.dumps(newResponse),headers=headers)
+            print('send error: ' + json.dumps(newResponse))
+        elif isinstance(destination,websocket.WebSocket):
+            newResponse = {
+                'request_id': request_id,
+                'end': True,
+                'data': error
+            }
+            responseString = json.dumps(newResponse)
+            print('Send error: ' + responseString)
+            destination.send(responseString)
+        else :
+            raise Exception('the type of endpoint is wrong!')

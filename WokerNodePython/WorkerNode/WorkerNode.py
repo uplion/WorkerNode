@@ -27,6 +27,7 @@ AIModelName : str = ''
 apiInstance = None
 stopEvent = threading.Event()
 startTime = 0
+sockets = dict()
 
 def init():
     global nodeType,pulsarURL,serviceTopicName,pulsarToken,topicName
@@ -119,7 +120,7 @@ class Processor(threading.Thread):
                 if msg:
                     self.consumer.negative_acknowledge(msg)
             except requests.exceptions.HTTPError as e:
-                # 处理HTTP错误
+                # 处理 HTTP 错误
                 if e.response.status_code == 401:
                     error_detail = e.response.json()
                     Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'AuthenticationError',json.dumps(error_detail))
