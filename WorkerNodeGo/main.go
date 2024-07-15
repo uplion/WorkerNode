@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/apache/pulsar-client-go/pulsar"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/apache/pulsar-client-go/pulsar"
 )
 
 const MODEL_NAME = "static"
@@ -80,13 +81,13 @@ func handle(msg pulsar.Message, consumer pulsar.Consumer) {
 
 	res, err := http.Post(endpoint, "application/json", strings.NewReader(string(data)))
 
-	defer res.Body.Close()
-
 	if err != nil {
 		log.Printf("Could not send response: %v", err)
 		consumer.Ack(msg)
 		return
 	}
+
+	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
 		log.Printf("Could not send response: %v, %s", res.Status, endpoint)
