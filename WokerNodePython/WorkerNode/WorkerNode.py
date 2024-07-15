@@ -8,6 +8,7 @@ import json
 from ApiMessageProcessor import ApiMessageProcessor
 import Event
 import requests
+import subprocess
 from kubernetes import client,config
 
 nodeType : str = '';
@@ -32,7 +33,7 @@ sockets = dict()
 def init():
     global nodeType,pulsarURL,serviceTopicName,pulsarToken,topicName
     global maxProcessNum,apiURL,apiKey,queue,map,model,debug,AIModelName,AIModelNamespace
-    nodeType = os.getenv('NODE_TYPE','api');
+    nodeType = os.getenv('NODE_TYPE','local');
     pulsarURL = os.getenv('PULSAR_URL',"pulsar://localhost:6650");
     maxProcessNum = int(os.getenv('MAX_PROCESS_NUM','128'));
     apiURL = os.getenv('API_URL',"http://localhost:8080/v1/chat/completions");
@@ -47,11 +48,21 @@ def init():
     queue = Queue();
     map = dict();
 
+def localInit():
+    currentDir = os.getcwd()
+    shFile = 'local.sh'
+    fullPath = os.path.join(currentDir,shFile)
+    try:
+        subprocess.run(['bash',fullPath],check=True)
+    except Exception as e:
+        raise e
+
 def createConsumer(url):
     global pulsarClient
     pulsarClient = pulsar.Client(
         service_url=url,
-        operation_timeout_seconds=10,
+        authentication=pulsar.AuthenticationToken(pulsarToken),
+        operation_timeout_seconds=60,
         )
 
     try:
@@ -67,6 +78,9 @@ def createConsumer(url):
         exit(1)
 
 def run():
+    if nodeType == 'local':
+        localInit()
+
     global pulsarClient,consumer
 
     pulsarClient,consumer = createConsumer(pulsarURL)
