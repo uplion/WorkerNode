@@ -65,21 +65,16 @@ Before running the `WorkerNode` program, ensure the following prerequisites are 
   python --version
   ```
 
-- **Pulsar**: The program requires Apache Pulsar. You can install Pulsar or set up a Pulsar instance following the official Pulsar documentation.
+- **Pulsar**: The program requires Apache Pulsar. You can install Pulsar or set up a Pulsar instance following the official [Pulsar documentation](https://pulsar.apache.org/docs/next/).
 
-- **Kubernetes**: For Kubernetes integration, you need access to a Kubernetes cluster or a local setup using Minikube or Docker Desktop.
+- **Kubernetes**: For [Kubernetes](https://kubernetes.io/docs/home/) integration, you need access to a Kubernetes cluster or a local setup using Minikube or Docker Desktop.
 
 ### Python Dependencies
 
-Install the required Python libraries using pip. Here's a list of essential libraries:
-
-- **pulsar-client**: For interacting with Apache Pulsar.
-- **requests**: For making HTTP requests.
-- **kubernetes**: For Kubernetes API interactions.
-  You can install these libraries using the following command:
+Install the required Python libraries using pip. All dependencies you need is in [requirement.txt](WorkerNodePython/WorkerNode/requirement.txt)
 
 ```bash
-pip install pulsar-client requests kubernetes
+pip install -r requirement.txt
 ```
 
 ### Configuration Files
@@ -90,7 +85,7 @@ Make sure to configure the necessary environment variables as outlined in the En
 
 #### Running Local Scripts
 
-If you are setting up a local model, it is necessary to run a local script named `bash.sh` that is located in the current directory. This script prepares the local environment or performs necessary initializations for the local model to function correctly.
+If you are setting up a local model, it is necessary to run a local script named `local.sh` that is located in the current directory. This script prepares the local environment or performs necessary initializations for the local model to function correctly.
 
 To run the script, you should first ensure that it is executable. You can set the executable permission using the following command:
 
@@ -104,9 +99,15 @@ After setting the executable permission, you can run the script directly from th
 ./local.sh
 ```
 
+or
+
+```bash
+bash local.sh
+```
+
 #### start.sh and ai.sh
 
-The `start.sh` script is responsible for setting up the environment by starting necessary services such as Docker containers and Apache Pulsar. Here is how to prepare and execute this script:
+The `start.sh` script is responsible for setting up the environment by starting necessary services such as Docker containers and Apache Pulsar in your local for test. Here is how to prepare and execute this script:
 
 **Running `start.sh` Script**
 
@@ -122,6 +123,12 @@ The `start.sh` script is responsible for setting up the environment by starting 
 
   ```bash
   ./start.sh
+  ```
+
+  or
+
+  ```bash
+  bash start.sh
   ```
 
 **Script Operations:**
@@ -140,21 +147,33 @@ The `start.sh` script is responsible for setting up the environment by starting 
   chmod +x ai.sh
   ```
 
-- To run the script in non-streaming mode:
+- To run the script in **non-streaming** mode:
 
   ```bash
   ./ai.sh
   ```
 
-- To enable streaming mode:
+  or
+
+  ```bash
+  bash ai.sh
+  ```
+
+- To enable **streaming** mode:
 
   ```
   ./ai.sh stream
   ```
 
+  or
+
+  ```bash
+  bash ai.sh stream
+  ```
+
 **Script Operations:**
 
-- Constructs JSON data for API requests using the `jo` command, which must be installed separately (`sudo apt-get install jo` on Debian/Ubuntu).
+- Constructs JSON data for API requests using the `jo` command, which must be installed separately (`sudo apt-get install jo` on Debian/Ubuntu or `winget install jo` in Windows).
 - Sends requests to the REST API and displays verbose output using `curl`.
 
 
