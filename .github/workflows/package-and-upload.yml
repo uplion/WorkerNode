@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Build and Push Python Worker Node
 
 on:
   push:
@@ -26,7 +26,7 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v2
       with:
-        context: .
+        context: ./WorkerNodePython/WorkerNode
         push: true
         tags: |
           yiwencai/workernode:latest
