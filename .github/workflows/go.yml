@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Build and Push Go Worker Node
 
 on:
   push:
@@ -26,8 +26,8 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v2
       with:
-        context: .
+        context: ./WorkerNodeGo
         push: true
         tags: |
-          yiwencai/workernode:latest
-          yiwencai/workernode:${{ github.sha }}
+          yiwencai/uplion-worker-node-go:latest
+          yiwencai/uplion-worker-node-go:${{ github.sha }}
