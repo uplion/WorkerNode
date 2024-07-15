@@ -1,4 +1,4 @@
-name: Build and Push Python Worker Node
+name: Build and Push Go Worker Node
 
 on:
   push:
