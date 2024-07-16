@@ -44,7 +44,7 @@ Handle errors appropriately, considering different scenarios like rate limits or
 
 ## API Specifications
 
-- [API Specifications Document](https://www.notion.so/API-5827e55421184ea58716ca67cd04da1b?pvs=21)
+- [API Specifications Document](https://github.com/uplion/main-api-service?tab=readme-ov-file#api-specification)
 - Ensure compliance with message format and error reporting as per guidelines.
 
 ## Error Message Specifications
