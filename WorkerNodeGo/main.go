@@ -6,7 +6,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/apache/pulsar-client-go/pulsar"
 )
@@ -14,12 +17,31 @@ import (
 const MODEL_NAME = "static"
 
 var PULSAR_URL string
+var MAX_PROCESS_NUM int
+var LIMIT bool = false
+var PROCESSING int = 0
+var LOCK sync.Mutex
+var LOCK_CHAN = make(chan int, 1)
 
 func init() {
 	if v, ok := os.LookupEnv("PULSAR_URL"); ok {
 		PULSAR_URL = v
 	} else {
 		PULSAR_URL = "pulsar://localhost:6650"
+	}
+
+	if v, ok := os.LookupEnv("MAX_PROCESS_NUM"); ok {
+		var err error
+		MAX_PROCESS_NUM, err = strconv.Atoi(v)
+		if err != nil {
+			log.Fatalf("Could not parse MAX_PROCESS_NUM: %v", err)
+		}
+
+		if MAX_PROCESS_NUM <= 10 {
+			LIMIT = true
+		}
+	} else {
+		MAX_PROCESS_NUM = 0
 	}
 }
 
@@ -58,6 +80,17 @@ type Response struct {
 }
 
 func handle(msg pulsar.Message, consumer pulsar.Consumer) {
+	defer func() {
+		if LIMIT {
+			LOCK.Lock()
+			PROCESSING--
+			LOCK.Unlock()
+			select {
+			case LOCK_CHAN <- 1:
+			default:
+			}
+		}
+	}()
 	task := Task{}
 	err := json.Unmarshal(msg.Payload(), &task)
 	if err != nil {
@@ -77,6 +110,10 @@ func handle(msg pulsar.Message, consumer pulsar.Consumer) {
 		log.Printf("Could not marshal response: %v", err)
 		consumer.Ack(msg)
 		return
+	}
+
+	if LIMIT {
+		time.Sleep(1 * time.Second)
 	}
 
 	res, err := http.Post(endpoint, "application/json", strings.NewReader(string(data)))
@@ -99,7 +136,6 @@ func handle(msg pulsar.Message, consumer pulsar.Consumer) {
 }
 
 func main() {
-	// 创建 Pulsar 客户端
 	client, err := pulsar.NewClient(pulsar.ClientOptions{
 		URL: PULSAR_URL,
 	})
@@ -120,11 +156,27 @@ func main() {
 
 	log.Printf("Subscribed successfully")
 	for {
+		if LIMIT {
+			for {
+				LOCK.Lock()
+				if PROCESSING < MAX_PROCESS_NUM {
+					LOCK.Unlock()
+					break
+				}
+				LOCK.Unlock()
+				<-LOCK_CHAN
+			}
+		}
 		msg, err := consumer.Receive(context.Background())
 		if err != nil {
 			log.Fatalf("Could not receive message: %v", err)
 		}
 
+		if LIMIT {
+			LOCK.Lock()
+			PROCESSING++
+			LOCK.Unlock()
+		}
 		go handle(msg, consumer)
 	}
 }
