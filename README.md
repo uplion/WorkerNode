@@ -22,7 +22,7 @@
 
 ## Model Information
 
-The system currently supports a single model per request. For local nodes, refer to [this GitHub repository](https://github.com/Mozilla-Ocho/llamafile) for a minimal model example. Ensure to handle model information errors appropriately.
+The system currently supports a single model per request. For local nodes, refer to [Mozilla-Ocho/llamafile](https://github.com/Mozilla-Ocho/llamafile) for a minimal model example. Ensure to handle model information errors appropriately.
 
 ## Error Reporting Types
 
