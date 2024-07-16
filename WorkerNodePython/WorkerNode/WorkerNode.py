@@ -166,7 +166,7 @@ class Processor(threading.Thread):
                 continue
             except json.JSONDecodeError as e:
                 if msg:
-                    self.consumer.negative_acknowledge(msg)
+                    self.consumer.acknowledge(msg)
             except requests.exceptions.HTTPError as e:
                 # 处理 HTTP 错误
                 if e.response.status_code == 401:
@@ -199,12 +199,12 @@ class Processor(threading.Thread):
                     print('error status code: {}'.format(e.response.status_code))
                     Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'GeneralError',error_detail['error']['message'])
                 if msg:
-                    self.consumer.negative_acknowledge(msg)
+                    self.consumer.acknowledge(msg)
 
             except Exception as e:
                 print(e.__str__())
                 if msg:
-                    self.consumer.negative_acknowledge(msg)
+                    self.consumer.acknowledge(msg)
             
             finally:
                 queue.task_done()
