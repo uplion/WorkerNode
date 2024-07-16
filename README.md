@@ -45,7 +45,7 @@ Handle errors appropriately, considering different scenarios like rate limits or
 ## API Specifications
 
 - [API Specifications Document](https://github.com/uplion/main-api-service?tab=readme-ov-file#api-specification)
-- Ensure compliance with message format and error reporting as per guidelines.
+- Ensure compliance with message format and [error reporting](https://github.com/uplion/ai-model-operator?tab=readme-ov-file#reporting-irreversible-errors) as per guidelines.
 
 ## Error Message Specifications
 
