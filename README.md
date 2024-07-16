@@ -194,4 +194,4 @@ Illustrate typical use cases and command examples to help users understand how t
 
 ## License
 
-MIT https://github.com/uplion/WorkerNode?tab=MIT-1-ov-file#
+[MIT](LICENSE)
