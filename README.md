@@ -28,6 +28,21 @@ The system currently supports a single model per request. For local nodes, refer
 
 High priority and critical error logs should be reported, especially irreversible errors and API quota completions. Errors such as configuration issues or authentication failures must be reported with human-readable details.
 
+## Design Purpose and Functionality
+
+### WorkerNodeGo
+
+- **Purpose**: This part of the code is primarily for testing and demonstration purposes. It does not actually interface with any external APIs or local models.
+- **Functionality**: The program listens to a Pulsar message queue and processes incoming messages with a simple, static response. This static response is predefined and does not involve any dynamic data processing.
+- **Specifics**: It receives a task request and consistently returns the same fixed response, regardless of the specifics of the request.
+
+### WorkerNodePython
+
+- **Purpose**: This component is a complete working node implementation that supports real interactions with external APIs or local models.
+- **Functionality**: Configured via environment variables, it can operate as either an API node or a local node, processing requests from the Pulsar message queue by invoking APIs or local models to generate responses.
+- **Concurrency**: Supports multithreading, capable of handling multiple messages concurrently, and includes a more complex error handling and event logging mechanism.
+- **Integration**: Includes interactions with Kubernetes clusters to facilitate operation in a containerized environment.
+
 ## Workflow
 
 1. **Subscription to Message Queue:** Depending on the model type, subscribe to relevant topics using Shard mode. Requests are randomly assigned to a matching node.
@@ -51,7 +66,7 @@ Handle errors appropriately, considering different scenarios like rate limits or
 
 Reference the OpenAI documentation for error fields: [OpenAI Error Codes](https://platform.openai.com/docs/guides/error-codes/api-errors).
 
-## Installation
+## Running
 
 Provide steps for setting up the `WorkerNode` system, including installation of dependencies, setting environment variables, and starting the service.
 
@@ -185,6 +200,64 @@ Once all dependencies are installed and configurations are set, you can run the 
 ```bash
 python3 WorkerNode.py
 ```
+
+## Running with Docker
+
+This project can be run using Docker, which simplifies setup and ensures consistency across different environments. Follow these steps to build and run the project using Docker:
+
+### Prerequisites
+
+- Ensure you have Docker installed on your system. You can download it from [Docker's official site](https://www.docker.com/products/docker-desktop).
+
+### Building the Docker Image
+
+To build the Docker image, navigate to the directory containing the Dockerfile and run the following command:
+
+```bash
+docker build -t workernode .
+```
+
+### Running the Docker Container
+
+Once the image is built, you can run the container using:
+
+```bash
+docker run -d --network host -e PULSAR_URL=pulsar://localhost:6650 -e PORT=8081 workernode
+```
+
+### Stopping the Container
+
+To stop the running container, you can use:
+
+```bash
+docker stop [CONTAINER_ID]
+```
+
+Replace `[CONTAINER_ID]` with the actual ID of your container. You can find the container ID by running `docker ps`.
+
+### Additional Docker Commands
+
+- Viewing Logs
+
+  : To view the logs of the running container, use:
+
+  ```bash
+  docker logs [CONTAINER_ID]
+  ```
+
+- Entering the Container
+
+  : If you need to enter the container to explore its environment or debug issues, you can use:
+
+  ```bash
+  docker exec -it [CONTAINER_ID] /bin/bash
+  ```
+
+This setup ensures that you can run the application with minimal configuration, leveraging Docker's capabilities to manage dependencies and environments.
+
+
+
+
 
 
 
