@@ -87,6 +87,7 @@ func handle(msg pulsar.Message, consumer pulsar.Consumer) {
 			LOCK.Lock()
 			PROCESSING--
 			LOCK.Unlock()
+			log.Printf("Processing slot freed: %d/%d", PROCESSING, MAX_PROCESS_NUM)
 			select {
 			case LOCK_CHAN <- 1:
 			default:
@@ -163,8 +164,9 @@ func main() {
 					break
 				}
 				LOCK.Unlock()
-				log.Printf("Processing limit reached, waiting for free slot")
+				log.Printf("Processing limit reached, waiting for free slot: %d/%d", PROCESSING, MAX_PROCESS_NUM)
 				<-LOCK_CHAN
+				log.Printf("Free slot may be available: %d/%d", PROCESSING, MAX_PROCESS_NUM)
 			}
 		}
 		msg, err := consumer.Receive(context.Background())
