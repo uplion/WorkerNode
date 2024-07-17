@@ -29,15 +29,23 @@ apiInstance = None
 stopEvent = threading.Event()
 startTime = 0
 sockets = dict()
+condition = threading.Condition()
+activeThreads = 0
+errorMode = False
+errorData = dict()
 
 def init():
     global nodeType,pulsarURL,serviceTopicName,pulsarToken,topicName
     global maxProcessNum,apiURL,apiKey,queue,map,model,debug,AIModelName,AIModelNamespace
-    nodeType = os.getenv('NODE_TYPE','local');
+    nodeType = os.getenv('NODE_TYPE','api');
     pulsarURL = os.getenv('PULSAR_URL',"pulsar://localhost:6650");
     maxProcessNum = int(os.getenv('MAX_PROCESS_NUM','128'));
-    apiURL = os.getenv('API_URL',"http://localhost:8080/v1/chat/completions");
-    apiKey = os.getenv('API_KEY',"sk-no-key-required");
+    if nodeType == 'local':
+        apiURL = 'http://localhost:8080/v1/chat/completions'
+        apiKey = 'sk-no-key-required'
+    else:
+        apiURL = os.getenv('API_URL',"https://api.openai-hk.com/v1/chat/completions");
+        apiKey = os.getenv('API_KEY',"");
     model = os.getenv('MODEL_NAME','gpt-3.5-turbo')
     serviceTopicName = os.getenv('RES_TOPIC_NAME','res-topic')
     debug = bool(os.getenv('DEBUG','false'))
@@ -78,14 +86,27 @@ def createConsumer(url):
         exit(1)
 
 def run():
+    global queue,errorMode,errorData
     if nodeType == 'local':
-        localInit()
+        if not model == 'LLaMA_CPP':
+            errorMode = True
+            errorData = {
+                "error": {
+                    "message": "The model \'{}\' does not exist or you do not have access to it.".format(model),
+                    "type": "invalid_request_error",
+                    "param": None,
+                    "code": "model_not_found"
+                }
+            }
+            Event.createEvent(apiInstance,AIModelNamespace,AIModelName,'ConfigurationError','unspported model ' + model)
+        else:
+            localInit()
 
     global pulsarClient,consumer
 
     pulsarClient,consumer = createConsumer(pulsarURL)
     
-    processors = list()
+    processors = []
 
     for i in range(maxProcessNum):
         processor = Processor('Thread-' + str(i),consumer)
@@ -94,9 +115,14 @@ def run():
 
     try:
         while True:
+            with condition:
+                while activeThreads >= maxProcessNum:
+                    condition.wait()
             msg = consumer.receive()
+            #consumer.acknowledge(msg)
             print('received message: {}'.format(msg.data())) # debug
             queue.put(msg,True)
+                
     except KeyboardInterrupt:
         print('Stopping consumer...')
     finally:
@@ -111,7 +137,7 @@ class Processor(threading.Thread):
         self.consumer = consumer
         self.producer = pulsarClient.create_producer(serviceTopicName)
     def run(self):
-        global startTime
+        global startTime,condition,activeThreads,queue,errorMode,errorData
         while True:
             msg = None
             if stopEvent.is_set() and time.time() > startTime:
@@ -120,45 +146,69 @@ class Processor(threading.Thread):
             elif stopEvent.is_set():
                 time.sleep(5)
                 continue
+            msg = queue.get(True)
+            with condition:
+                activeThreads += 1
+                
             try:
-                msg = queue.get(True)
                 print('{} take message: {}'.format(self.name,msg.data())) #debug
                 if nodeType == 'api':
-                    amp = ApiMessageProcessor(msg,apiURL,apiKey,model)
+                    amp = ApiMessageProcessor(msg,apiURL,apiKey,model,errorMode,errorData)
                 else:
-                    amp = ApiMessageProcessor(msg,apiURL,apiKey,'gpt-3.5-turbo')
+                    amp = ApiMessageProcessor(msg,apiURL,apiKey,'gpt-3.5-turbo',errorMode,errorData)
                 result = amp.process()
-                self.sendResult(result)
+                if result != None:
+                    self.sendResult(result)
                 self.consumer.acknowledge(msg)
             except Empty:
                 continue
             except json.JSONDecodeError as e:
-                Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'GeneralError','Error decoding JSON')
                 if msg:
-                    self.consumer.negative_acknowledge(msg)
+                    self.consumer.acknowledge(msg)
             except requests.exceptions.HTTPError as e:
                 # 处理 HTTP 错误
                 if e.response.status_code == 401:
                     error_detail = e.response.json()
-                    Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'AuthenticationError',json.dumps(error_detail))
+                    errorMode = True
+                    errorData = error_detail
+                    Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'AuthenticationError',error_detail['error']['message'])
                 elif e.response.status_code == 429:
                     error_detail = e.response.json()
+                    errorMode = True
+                    errorData = error_detail
                     if 'Rate limit reached for requests' in error_detail['error']['message']:
                         if not stopEvent.isSet():
                             stopEvent.set()
                             startTime = time.time() + 60
                     else:
-                        Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'APIQuotaExceededError',json.dumps(error_detail))
+                        Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'APIQuotaExceededError',error_detail['error']['message'])
+                elif e.response.status_code == 404:
+                    error_detail = e.response.json()
+                    errorMode = True
+                    errorData = error_detail
+                    if 'model' in error_detail['error']['message']:
+                        Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'ConfigurationError',error_detail['error']['message'])
+                    else:
+                        Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'GeneralError',error_detail['error']['message'])
                 else:
                     error_detail = e.response.json()
-                    Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'GeneralError',json.dumps(error_detail))
+                    errorMode = True
+                    errorData = error_detail
+                    print('error status code: {}'.format(e.response.status_code))
+                    Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'GeneralError',error_detail['error']['message'])
                 if msg:
-                    self.consumer.negative_acknowledge(msg)
+                    self.consumer.acknowledge(msg)
 
             except Exception as e:
-                Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'GeneralError',e.__str__())
+                print(e.__str__())
                 if msg:
-                    self.consumer.negative_acknowledge(msg)
+                    self.consumer.acknowledge(msg)
+            
+            finally:
+                queue.task_done()
+                with condition:
+                    activeThreads -= 1
+                    condition.notify()
 
     def sendResult(self,result):
         result['model'] = model

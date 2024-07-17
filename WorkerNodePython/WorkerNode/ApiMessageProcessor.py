@@ -6,12 +6,14 @@ import tiktoken
 
 
 class ApiMessageProcessor:
-    def __init__(self,msg,apiURL,apiKey,model):
+    def __init__(self,msg,apiURL,apiKey,model,errorMode,errorData):
         self.msg = msg
         self.apiURL = apiURL
         self.apiKey = apiKey
         self.encoding = tiktoken.encoding_for_model(model)
         self.destination = None
+        self.errorMode = errorMode
+        self.errorData = errorData
     def process(self):
         try:
             jsonMsg = json.loads(self.msg.data().decode('utf-8'))
@@ -24,6 +26,9 @@ class ApiMessageProcessor:
         try:
             if(stream == False):
                 self.destination = endPoint
+                if self.errorMode:
+                    self.sendError(self.destination,requestID,self.errorData)
+                    return None
                 response = self.sendHttpRequest(data)
                 print('received response: {}'.format(response))
                 self.sendHttpResponse(response,requestID,endPoint)
@@ -38,7 +43,12 @@ class ApiMessageProcessor:
                 }
                 return result
             else:
-                tokens = self.sendStreamRequest(data,requestID,endPoint)
+                ws = websocket.create_connection(endPoint.replace('http://','ws://'))
+                self.destination = ws
+                if self.errorMode:
+                    self.sendError(self.destination,requestID,self.errorData)
+                    return None
+                tokens = self.sendStreamRequest(data,requestID,ws)
                 usage = {
                     "prompt_tokens": tokens[0],
                     "completion_tokens": tokens[1],
@@ -51,8 +61,7 @@ class ApiMessageProcessor:
                 return result
         
         except requests.exceptions.HTTPError as e:
-            error_detail = e.response.json()
-            # TODO: 完成返回错误    
+            error_detail = e.response.json()   
             self.sendError(self.destination,requestID,error_detail)
             raise e
         except Exception as e:
@@ -78,7 +87,7 @@ class ApiMessageProcessor:
         }
         requests.post(endpoint,data=json.dumps(newResponse),headers=headers,verify=False)
 
-    def sendStreamRequest(self,data,request_id,endpoint):
+    def sendStreamRequest(self,data,request_id,ws):
         headers = {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer {}'.format(self.apiKey)
@@ -88,9 +97,6 @@ class ApiMessageProcessor:
             for chunk in response.iter_content(chunk_size=None):
                 yield chunk
         client = SSEClient(event_stream())
-
-        ws = websocket.create_connection(endpoint.replace('http://','ws://'))
-        self.destination = ws
 
         response = requests.post(self.apiURL,data=json.dumps(data),headers=headers,verify=False)
 
