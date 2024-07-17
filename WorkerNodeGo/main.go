@@ -168,6 +168,7 @@ func main() {
 				<-LOCK_CHAN
 				log.Printf("Free slot may be available: %d/%d", PROCESSING, MAX_PROCESS_NUM)
 			}
+			log.Printf("Processing slot acquired: %d/%d, now fetching message", PROCESSING, MAX_PROCESS_NUM)
 		}
 		msg, err := consumer.Receive(context.Background())
 		if err != nil {
