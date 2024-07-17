@@ -80,6 +80,8 @@ type Response struct {
 }
 
 func handle(msg pulsar.Message, consumer pulsar.Consumer) {
+	defer consumer.Ack(msg)
+
 	defer func() {
 		if LIMIT {
 			LOCK.Lock()
@@ -98,7 +100,6 @@ func handle(msg pulsar.Message, consumer pulsar.Consumer) {
 	err := json.Unmarshal(msg.Payload(), &task)
 	if err != nil {
 		log.Fatalf("Could not unmarshal message: %v", err)
-		consumer.Ack(msg)
 		return
 	}
 
@@ -111,7 +112,6 @@ func handle(msg pulsar.Message, consumer pulsar.Consumer) {
 
 	if err != nil {
 		log.Printf("Could not marshal response: %v", err)
-		consumer.Ack(msg)
 		return
 	}
 
@@ -123,7 +123,6 @@ func handle(msg pulsar.Message, consumer pulsar.Consumer) {
 
 	if err != nil {
 		log.Printf("Could not send response: %v", err)
-		consumer.Ack(msg)
 		return
 	}
 
@@ -131,11 +130,8 @@ func handle(msg pulsar.Message, consumer pulsar.Consumer) {
 
 	if res.StatusCode != http.StatusOK {
 		log.Printf("Could not send response: %v, %s", res.Status, endpoint)
-		consumer.Ack(msg)
 		return
 	}
-
-	consumer.Ack(msg)
 }
 
 func main() {
