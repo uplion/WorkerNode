@@ -92,6 +92,9 @@ func handle(msg pulsar.Message, consumer pulsar.Consumer) {
 		}
 	}()
 	task := Task{}
+	if LIMIT {
+		log.Printf("Recv message: %s", string(msg.Payload()))
+	}
 	err := json.Unmarshal(msg.Payload(), &task)
 	if err != nil {
 		log.Fatalf("Could not unmarshal message: %v", err)
