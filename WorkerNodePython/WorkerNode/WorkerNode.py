@@ -44,9 +44,9 @@ def init():
         apiURL = 'http://localhost:8080/v1/chat/completions'
         apiKey = 'sk-no-key-required'
     else:
-        apiURL = os.getenv('API_URL',"https://api.openai.com/v1/chat/completions");
+        apiURL = os.getenv('API_URL',"https://api.openai-hk.com/v1/chat/completions");
         apiKey = os.getenv('API_KEY',"");
-    model = os.getenv('MODEL_NAME','gpt-2')
+    model = os.getenv('MODEL_NAME','gpt-3.5-turbo')
     serviceTopicName = os.getenv('RES_TOPIC_NAME','res-topic')
     debug = bool(os.getenv('DEBUG','false'))
     pulsarToken = os.getenv('PULSAR_TOKEN','')
@@ -115,14 +115,13 @@ def run():
 
     try:
         while True:
-            while activeThreads == maxProcessNum:
-                continue
+            with condition:
+                while activeThreads >= maxProcessNum:
+                    condition.wait()
             msg = consumer.receive()
             #consumer.acknowledge(msg)
             print('received message: {}'.format(msg.data())) # debug
-            with condition:
-                queue.put(msg,True)
-                condition.notify()
+            queue.put(msg,True)
                 
     except KeyboardInterrupt:
         print('Stopping consumer...')
@@ -147,11 +146,9 @@ class Processor(threading.Thread):
             elif stopEvent.is_set():
                 time.sleep(5)
                 continue
+            msg = queue.get(True)
             with condition:
-                while queue.empty():
-                    condition.wait()
                 activeThreads += 1
-                msg = queue.get(True)
                 
             try:
                 print('{} take message: {}'.format(self.name,msg.data())) #debug
@@ -211,7 +208,7 @@ class Processor(threading.Thread):
                 queue.task_done()
                 with condition:
                     activeThreads -= 1
-                    condition.notify_all()
+                    condition.notify()
 
     def sendResult(self,result):
         result['model'] = model
