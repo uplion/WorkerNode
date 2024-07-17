@@ -88,7 +88,6 @@ def createConsumer(url):
 def run():
     global queue,errorMode,errorData
     if nodeType == 'local':
-        localInit()
         if not model == 'LLaMA_CPP':
             errorMode = True
             errorData = {
@@ -100,6 +99,8 @@ def run():
                 }
             }
             Event.createEvent(apiInstance,AIModelNamespace,AIModelName,'ConfigurationError','unspported model ' + model)
+        else:
+            localInit()
 
     global pulsarClient,consumer
 
