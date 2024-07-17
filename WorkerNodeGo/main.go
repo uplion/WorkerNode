@@ -167,6 +167,7 @@ func main() {
 					break
 				}
 				LOCK.Unlock()
+				log.Printf("Processing limit reached, waiting for free slot")
 				<-LOCK_CHAN
 			}
 		}
