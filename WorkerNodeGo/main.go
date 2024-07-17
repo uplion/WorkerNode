@@ -14,7 +14,7 @@ import (
 	"github.com/apache/pulsar-client-go/pulsar"
 )
 
-const MODEL_NAME = "static"
+var MODEL_NAME = "static"
 
 var PULSAR_URL string
 var MAX_PROCESS_NUM int
@@ -24,6 +24,10 @@ var LOCK sync.Mutex
 var LOCK_CHAN = make(chan int, 1)
 
 func init() {
+	if v, ok := os.LookupEnv("MODEL_NAME"); ok {
+		MODEL_NAME = v
+	}
+
 	if v, ok := os.LookupEnv("PULSAR_URL"); ok {
 		PULSAR_URL = v
 	} else {
