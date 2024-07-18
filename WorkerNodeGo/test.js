@@ -1,7 +1,8 @@
-async function req() {
-    const url = 'http://localhost:8081/api/v1/chat/completions';
+const begin = new Date()
+async function req(id) {
+    const url = 'http://127.0.0.1:8081/api/v1/chat/completions';
     const data = {
-        model: "static",
+        model: "gpt-3.5-turbo",
         messages: [
             {
                 role: "user",
@@ -9,6 +10,7 @@ async function req() {
             }
         ]
     };
+    console.log("starting req", id)
 
     const res = await fetch(url, {
         method: 'POST',
@@ -18,8 +20,10 @@ async function req() {
         body: JSON.stringify(data)
     })
     const ans = await res.json();
-    console.log(ans.id)
+    console.log(new Date().getTime() - begin.getTime(), ans.id)
     return ans
 }
 
-await Promise.all(Array(10).fill(0).map(() => req()))
+;(async function(){
+Promise.all(Array(10).fill(0).map((e, i) => req(i)))
+})();

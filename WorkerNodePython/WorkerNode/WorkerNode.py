@@ -39,7 +39,7 @@ def init():
     global maxProcessNum,apiURL,apiKey,queue,map,model,debug,AIModelName,AIModelNamespace
     nodeType = os.getenv('NODE_TYPE','api');
     pulsarURL = os.getenv('PULSAR_URL',"pulsar://localhost:6650");
-    maxProcessNum = int(os.getenv('MAX_PROCESS_NUM','128'));
+    maxProcessNum = int(os.getenv('MAX_PROCESS_NUM','2'));
     if nodeType == 'local':
         apiURL = 'http://localhost:8080/v1/chat/completions'
         apiKey = 'sk-no-key-required'
