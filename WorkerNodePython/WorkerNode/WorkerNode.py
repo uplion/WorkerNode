@@ -37,15 +37,15 @@ errorData = dict()
 def init():
     global nodeType,pulsarURL,serviceTopicName,pulsarToken,topicName
     global maxProcessNum,apiURL,apiKey,queue,map,model,debug,AIModelName,AIModelNamespace
-    nodeType = os.getenv('NODE_TYPE','local');
+    nodeType = os.getenv('NODE_TYPE','api');
     pulsarURL = os.getenv('PULSAR_URL',"pulsar://localhost:6650");
-    maxProcessNum = int(os.getenv('MAX_PROCESS_NUM','5'));
+    maxProcessNum = int(os.getenv('MAX_PROCESS_NUM','2'));
     if nodeType == 'local':
         apiURL = 'http://localhost:8080/v1/chat/completions'
         apiKey = 'sk-no-key-required'
     else:
         apiURL = os.getenv('API_URL',"https://api.openai-hk.com/v1/chat/completions");
-        apiKey = os.getenv('API_KEY',"");
+        apiKey = os.getenv('API_KEY',"hk-j9e9al1000037138f0cd6a31058a83dbb7a63f56fd48788c");
     model = os.getenv('MODEL_NAME','gpt-3.5-turbo')
     serviceTopicName = os.getenv('RES_TOPIC_NAME','res-topic')
     debug = bool(os.getenv('DEBUG','false'))
@@ -119,6 +119,7 @@ def run():
                 while activeThreads >= maxProcessNum:
                     condition.wait()
             msg = consumer.receive()
+            time.sleep(5)
             #consumer.acknowledge(msg)
             print('received message: {}'.format(msg.data())) # debug
             queue.put(msg,True)
@@ -231,6 +232,6 @@ def kubenetesInit():
     apiInstance = client.CoreV1Api()
     
 if __name__ == '__main__':
-    #kubenetesInit()
+    kubenetesInit()
     init()
     run()

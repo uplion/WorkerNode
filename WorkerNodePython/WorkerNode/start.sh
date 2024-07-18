@@ -19,7 +19,7 @@ cleanup() {
 # 设置 trap 捕捉退出信号 (例如，Ctrl+C, exit 等)
 trap cleanup EXIT
 
-# 检查目录是否存在并运行 Pulsar
+检查目录是否存在并运行 Pulsar
 if [[ -d ~/apache-pulsar-3.3.0/bin ]]; then
     cd ~/apache-pulsar-3.3.0/bin
     ./pulsar standalone
