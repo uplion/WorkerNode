@@ -231,6 +231,6 @@ def kubenetesInit():
     apiInstance = client.CoreV1Api()
     
 if __name__ == '__main__':
-    kubenetesInit()
+    #kubenetesInit()
     init()
     run()
