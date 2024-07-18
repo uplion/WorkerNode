@@ -99,7 +99,7 @@ class ApiMessageProcessor:
 
         response = requests.post(self.apiURL,data=json.dumps(data),headers=headers,verify=False)
 
-        if response.status_code >= 200:
+        if response.status_code >= 400:
             e = requests.exceptions.HTTPError()
             e.response = response
             raise e
