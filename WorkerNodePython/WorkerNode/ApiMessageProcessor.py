@@ -15,14 +15,12 @@ class ApiMessageProcessor:
         self.errorMode = errorMode
         self.errorData = errorData
     def process(self):
-        try:
-            jsonMsg = json.loads(self.msg.data().decode('utf-8'))
-            requestID = jsonMsg['request_id']
-            endPoint = jsonMsg['endpoint']
-            stream = jsonMsg['stream']
-            data = jsonMsg['data']
-        except Exception as e:
-            raise e
+        jsonMsg = json.loads(self.msg.data().decode('utf-8'))
+        requestID = jsonMsg['request_id']
+        endPoint = jsonMsg['endpoint']
+        stream = jsonMsg['stream']
+        data = jsonMsg['data']
+        print(f"{self.apiURL=} {stream=} {endPoint=} {requestID=}")
         try:
             if(stream == False):
                 self.destination = endPoint
@@ -73,7 +71,8 @@ class ApiMessageProcessor:
             'Authorization': 'Bearer {}'.format(self.apiKey)
         }
 
-        response = requests.post(self.apiURL,data=json.dumps(data),headers=headers,verify=False)
+
+        response = requests.post(self.apiURL,data=json.dumps(data),headers=headers)
         response.raise_for_status()
         return response.json()
     

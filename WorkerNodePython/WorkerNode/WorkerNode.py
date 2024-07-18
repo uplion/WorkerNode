@@ -197,11 +197,6 @@ class Processor(threading.Thread):
                     Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'GeneralError',error_detail['error']['message'])
                 if msg:
                     self.consumer.acknowledge(msg)
-
-            except Exception as e:
-                print(e.__str__())
-                if msg:
-                    self.consumer.acknowledge(msg)
             
             finally:
                 queue.task_done()
