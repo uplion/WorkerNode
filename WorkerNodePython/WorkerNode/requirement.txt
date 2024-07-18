@@ -1,6 +1,6 @@
 pulsar-client
 requests
 kubernetes
-sseclient
+sseclient==0.0.27
 tiktoken
 websocket-client
