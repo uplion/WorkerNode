@@ -9,7 +9,12 @@ from ApiMessageProcessor import ApiMessageProcessor
 import Event
 import requests
 import subprocess
+from tqdm import tqdm
+from urllib.parse import urlparse
 from kubernetes import client,config
+from dotenv import load_dotenv
+
+load_dotenv()
 
 nodeType : str = '';
 pulsarURL : str = '';
@@ -23,8 +28,8 @@ model : str = ''
 serviceTopicName : str = '' 
 debug : bool = False
 pulsarToken : str = ''
-AIModelNamespace : str = ''
-AIModelName : str = ''
+AIModelNamespace = os.getenv('AIMODEL_NAMESPACE')
+AIModelName = os.getenv('AIMODEL_NAME')
 apiInstance = None
 stopEvent = threading.Event()
 startTime = 0
@@ -34,24 +39,69 @@ activeThreads = 0
 errorMode = False
 errorData = dict()
 
+def getenv(key, defaultValue = None):
+    e = os.getenv(key)
+    if not e:
+        if defaultValue != None:
+            return defaultValue
+        print(f"Missing env var: {key}")
+        Event.createEvent(apiInstance,AIModelNamespace,AIModelName,"ConfigurationError",f"Missing env var: {key}")
+        exit(1)
+    return e
+
+def wget_like_download(url, output_path=None):
+    try:
+        head_response = requests.head(url, allow_redirects=True)
+        head_response.raise_for_status()
+        
+        if not output_path:
+            filename = urlparse(head_response.url).path.split('/')[-1]
+            if not filename:
+                filename = 'downloaded_file'
+        else:
+            filename = output_path
+        
+        response = requests.get(url, stream=True, allow_redirects=True)
+        response.raise_for_status()
+        
+        total_size = int(response.headers.get('content-length', 0))
+        
+        if os.path.exists(filename):
+            print(f"File '{filename}' already exists. Skipping download.")
+            return
+        
+        with open(filename, 'wb') as file, tqdm(
+            desc=filename,
+            total=total_size,
+            unit='iB',
+            unit_scale=True,
+            unit_divisor=1024,
+        ) as progress_bar:
+            for data in response.iter_content(chunk_size=8192):
+                size = file.write(data)
+                progress_bar.update(size)
+        
+        print(f"File downloaded successfully as {filename}")
+    
+    except requests.RequestException as e:
+        print(f"Error downloading file: {e}")
+
 def init():
     global nodeType,pulsarURL,serviceTopicName,pulsarToken,topicName
     global maxProcessNum,apiURL,apiKey,queue,map,model,debug,AIModelName,AIModelNamespace
-    nodeType = os.getenv('NODE_TYPE','api');
-    pulsarURL = os.getenv('PULSAR_URL',"pulsar://localhost:6650");
-    maxProcessNum = int(os.getenv('MAX_PROCESS_NUM','2'));
+    nodeType = getenv('NODE_TYPE');
+    pulsarURL = getenv('PULSAR_URL');
+    maxProcessNum = int(getenv('MAX_PROCESS_NUM', '128'));
     if nodeType == 'local':
         apiURL = 'http://localhost:8080/v1/chat/completions'
         apiKey = 'sk-no-key-required'
     else:
-        apiURL = os.getenv('API_URL',"https://api.openai-hk.com/v1") + "/chat/completions";
-        apiKey = os.getenv('API_KEY',"hk-j9e9al1000037138f0cd6a31058a83dbb7a63f56fd48788c");
-    model = os.getenv('MODEL_NAME','gpt-3.5-turbo')
-    serviceTopicName = os.getenv('RES_TOPIC_NAME','res-topic')
-    debug = bool(os.getenv('DEBUG','false'))
-    pulsarToken = os.getenv('PULSAR_TOKEN','')
-    AIModelName = os.getenv('AIMODEL_NAME','none')
-    AIModelNamespace = os.getenv('AIMODEL_NAMESPACE','none')
+        apiURL = getenv('API_URL') + "/chat/completions";
+        apiKey = getenv('API_KEY');
+    model = getenv('MODEL_NAME')
+    serviceTopicName = getenv('RES_TOPIC_NAME')
+    debug = getenv('DEBUG', 'false') == 'true'
+    pulsarToken = getenv('PULSAR_TOKEN', '')
     topicName = 'model-' + model
     queue = Queue();
     map = dict();
@@ -61,7 +111,11 @@ def localInit():
     shFile = 'local.sh'
     fullPath = os.path.join(currentDir,shFile)
     try:
-        subprocess.run(['bash',fullPath],check=True)
+        wget_like_download(
+            "https://huggingface.co/Mozilla/TinyLlama-1.1B-Chat-v1.0-llamafile/resolve/main/TinyLlama-1.1B-Chat-v1.0.F16.llamafile?download=true",
+            "TinyLlama-1.1B-Chat-v1.0-llamafile"
+        )
+        subprocess.Popen(['bash', 'local.sh'],stdout=subprocess.PIPE)
     except Exception as e:
         raise e
 
@@ -88,7 +142,7 @@ def createConsumer(url):
 def run():
     global queue,errorMode,errorData
     if nodeType == 'local':
-        if not model == 'LLaMA_CPP':
+        if not model == 'TinyLlama-1.1B':
             errorMode = True
             errorData = {
                 "error": {
@@ -198,6 +252,7 @@ class Processor(threading.Thread):
                 if msg:
                     self.consumer.acknowledge(msg)
             
+
             finally:
                 queue.task_done()
                 with condition:
@@ -219,12 +274,14 @@ def kubenetesInit():
     except:
         try:
             config.load_kube_config()
-        except:
+        except Exception as e:
+            print(e)
             return
     global apiInstance
     apiInstance = client.CoreV1Api()
     
 if __name__ == '__main__':
-    #kubenetesInit()
+    if AIModelName:
+        kubenetesInit()
     init()
     run()

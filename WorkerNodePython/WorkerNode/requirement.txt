@@ -5,3 +5,5 @@ sseclient==0.0.27
 sseclient-py==1.8.0
 tiktoken
 websocket-client
+python-dotenv
+tqdm

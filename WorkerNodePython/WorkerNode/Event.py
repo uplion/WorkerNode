@@ -3,11 +3,10 @@ import os
 import time
 
 def createEvent(apiInstance,AIModelNamespace,AIModelName,reason,message):
-    if(AIModelName == 'none'):
-        print(
-            'An error occured!\nreason: {}\nmessage: {}'.format(reason,message)
-        )
-    else:
+    print(
+        'An error occured!\nreason: {}\nmessage: {}'.format(reason,message)
+    )
+    if AIModelName:
         event = client.CoreV1Event(
         metadata=client.V1ObjectMeta(
             name=f'{AIModelName}.workerNode-error',

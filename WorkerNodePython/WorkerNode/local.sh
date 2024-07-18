@@ -1,7 +1,4 @@
-#!/bin/bsah
+#!/bin/bash
 
-wget https://huggingface.co/Mozilla/llava-v1.5-7b-llamafile/resolve/main/llava-v1.5-7b-q4.llamafile?download=true
-
-chmod +x llava-v1.5-7b-q4.llamafile
-
-./llava-v1.5-7b-q4.llamafile
+chmod +x TinyLlama-1.1B-Chat-v1.0-llamafile
+./TinyLlama-1.1B-Chat-v1.0-llamafile
