@@ -37,7 +37,7 @@ errorData = dict()
 def init():
     global nodeType,pulsarURL,serviceTopicName,pulsarToken,topicName
     global maxProcessNum,apiURL,apiKey,queue,map,model,debug,AIModelName,AIModelNamespace
-    nodeType = os.getenv('NODE_TYPE','api');
+    nodeType = os.getenv('NODE_TYPE','local');
     pulsarURL = os.getenv('PULSAR_URL',"pulsar://localhost:6650");
     maxProcessNum = int(os.getenv('MAX_PROCESS_NUM','2'));
     if nodeType == 'local':
