@@ -28,9 +28,7 @@ model : str = ''
 serviceTopicName : str = '' 
 debug : bool = False
 pulsarToken : str = ''
-AIModelNamespace = os.getenv('AIMODEL_NAMESPACE')
-AIModelName = os.getenv('AIMODEL_NAME')
-apiInstance = None
+
 stopEvent = threading.Event()
 startTime = 0
 sockets = dict()
@@ -45,7 +43,7 @@ def getenv(key, defaultValue = None):
         if defaultValue != None:
             return defaultValue
         print(f"Missing env var: {key}")
-        Event.createEvent(apiInstance,AIModelNamespace,AIModelName,"ConfigurationError",f"Missing env var: {key}")
+        Event.createEvent("ConfigurationError",f"Missing env var: {key}")
         exit(1)
     return e
 
@@ -136,7 +134,7 @@ def createConsumer(url):
             )
         return pulsarClient,consumer
     except Exception as e:
-        Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'MessageQueueConnectionError',e.__str__())
+        Event.createEvent('MessageQueueConnectionError',e.__str__())
         exit(1)
 
 def run():
@@ -152,7 +150,7 @@ def run():
                     "code": "model_not_found"
                 }
             }
-            Event.createEvent(apiInstance,AIModelNamespace,AIModelName,'ConfigurationError','unspported model ' + model)
+            Event.createEvent('ConfigurationError','unspported model ' + model)
         else:
             localInit()
 
@@ -224,7 +222,7 @@ class Processor(threading.Thread):
                     error_detail = e.response.json()
                     errorMode = True
                     errorData = error_detail
-                    Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'AuthenticationError',error_detail['error']['message'])
+                    Event.createEvent('AuthenticationError',error_detail['error']['message'])
                 elif e.response.status_code == 429:
                     error_detail = e.response.json()
                     errorMode = True
@@ -234,21 +232,21 @@ class Processor(threading.Thread):
                             stopEvent.set()
                             startTime = time.time() + 60
                     else:
-                        Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'APIQuotaExceededError',error_detail['error']['message'])
+                        Event.createEvent('APIQuotaExceededError',error_detail['error']['message'])
                 elif e.response.status_code == 404:
                     error_detail = e.response.json()
                     errorMode = True
                     errorData = error_detail
                     if 'model' in error_detail['error']['message']:
-                        Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'ConfigurationError',error_detail['error']['message'])
+                        Event.createEvent('ConfigurationError',error_detail['error']['message'])
                     else:
-                        Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'GeneralError',error_detail['error']['message'])
+                        Event.createEvent('GeneralError',error_detail['error']['message'])
                 else:
                     error_detail = e.response.json()
                     errorMode = True
                     errorData = error_detail
                     print('error status code: {}'.format(e.response.status_code))
-                    Event.createEvent(apiInstance,AIModelName,AIModelNamespace,'GeneralError',error_detail['error']['message'])
+                    Event.createEvent('GeneralError',error_detail['error']['message'])
                 if msg:
                     self.consumer.acknowledge(msg)
             
@@ -268,20 +266,7 @@ class Processor(threading.Thread):
         
                 
 
-def kubenetesInit():
-    try:
-        config.load_incluster_config()
-    except:
-        try:
-            config.load_kube_config()
-        except Exception as e:
-            print(e)
-            return
-    global apiInstance
-    apiInstance = client.CoreV1Api()
     
 if __name__ == '__main__':
-    if AIModelName:
-        kubenetesInit()
     init()
     run()
