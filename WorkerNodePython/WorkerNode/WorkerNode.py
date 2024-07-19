@@ -210,8 +210,8 @@ class Processor(threading.Thread):
                 else:
                     amp = ApiMessageProcessor(msg,apiURL,apiKey,'gpt-3.5-turbo',errorMode,errorData)
                 result = amp.process()
-                if result != None:
-                    self.sendResult(result)
+                # if result != None:
+                #     self.sendResult(result)
                 self.consumer.acknowledge(msg)
             except Empty:
                 continue
