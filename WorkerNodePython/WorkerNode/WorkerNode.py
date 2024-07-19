@@ -16,6 +16,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+AIModelNamespace = os.getenv('AIMODEL_NAMESPACE')
+AIModelName = os.getenv('AIMODEL_NAME')
 nodeType : str = '';
 pulsarURL : str = '';
 topicName : str = '';
